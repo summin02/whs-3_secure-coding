@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>🚨 실시간 신고 로그</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <h3 class="navbar-brand mb-2">🧾 로그 대시보드</h3>
+        <div class="ms-auto">
+            <a href="/admin" class="btn btn-secondary btn-sm">← 관리자 홈으로</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h3 class="mb-4">🚨 실시간 신고 로그</h3>
+        {% if session.is_superadmin %}
+        <form method="POST" action="/admin/logs/reports/delete_all" onsubmit="return confirm('정말 전체 삭제할까요?');" class="mb-3">
+            <button class="btn btn-danger btn-sm">🧹 전체 신고 로그 삭제</button>
+        </form>
+        {% endif %}
+
+        <div class="list-group mb-4">
+            <a href="/admin/logs" class="list-group-item list-group-item-action">👑 실시간 관리자 로그</a>
+            <a href="/admin/logs/chat" class="list-group-item list-group-item-action">📩 실시간 채팅 로그</a>
+            <a href="/admin/logs/items" class="list-group-item list-group-item-action">📦 실시간 게시물 작업 로그</a>
+        </div>
+
+        <ul class="list-group" id="report-log-list"> <!-- 신고 로그를 추가할 정확한 요소 지정 -->
+            {% for log in logs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>신고자 : </strong>{{ log.reporter_name }}<br>
+                    <strong>신고 사유: </strong>{{ log.reason or '사유 없음' }}<br>
+                    <strong>신고된 게시물: </strong>{{ log.reported_item_title or '제목 없음' }}<br>
+                    <strong>게시물 작성자 ID: </strong>{{ log.reported_item_user_id or 'ID 없음' }} <br>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">{{ log.timestamp }}</small>
+                    <form method="POST" action="{{ url_for('delete_reports_log', log_id=log.id) }}" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                        <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="container mt-5"></div>
+
+    <script>
+        const socket = io('/admin');
+
+        socket.on('connect', () => {
+            console.log("🚨 신고 로그 소켓 연결됨");
+        });
+
+        socket.on('new_log', function(data) {
+            // 로그 타입이 'report'일 경우만 추가
+            if (data.log_type === 'report') {
+                const logList = document.getElementById("report-log-list");  // 신고 로그 리스트
+                const li = document.createElement("li");
+                const now = new Date().toLocaleString();
+
+                li.className = "list-group-item";
+                li.innerHTML = `
+                    <strong>신고자 : </strong>${data.reporter_name} <br>
+                    <strong>신고 사유: </strong>${data.reason ? data.reason : '사유 없음'} <br>
+                    <strong>신고된 게시물: </strong>${data.reported_item_title ? data.reported_item_title : '제목 없음'}<br>
+                    <strong>게시물 작성자 ID: </strong>${data.reported_item_user_id ? data.reported_item_user_id : 'ID 없음'} <br>
+                    <small class="text-muted float-end">${now}</small>
+                `;
+                
+                // 리스트의 첫 번째 항목으로 새 로그 추가
+                logList.prepend(li);
+            }
+        });
+    </script>
+</body>
+</html>

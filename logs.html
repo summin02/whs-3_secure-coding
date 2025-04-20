@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그 대시보드</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- ✅ socket.io는 이 줄 필수! -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <div class="list-group mb-4">
+        <a href="/admin/logs/chat" class="list-group-item list-group-item-action">📩 실시간 채팅 로그</a>
+        <a href="/admin/logs/items" class="list-group-item list-group-item-action">📦 게시물 작업 로그</a>
+        <a href="/admin/logs/reports" class="list-group-item list-group-item-action">🚨 신고 로그</a>
+    </div>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h3 class="mb-4">🧾 로그 대시보드</h3>
+    
+
+    <ul id="log-list" class="list-group mb-4">
+        {% for log in logs %}
+        <li class="list-group-item">
+            <strong>[{{ log.log_type|upper }}]</strong> {{ log.message }}
+            <small class="text-muted float-end">{{ log.created_at }}</small>
+        </li>
+        {% endfor %}
+    </ul>
+
+
+
+    <a href="/admin" class="btn btn-secondary btn-sm">← 관리자 홈으로</a>
+</div>
+
+<!-- ✅ 반드시 위의 socket.io.js가 먼저 로드된 이후에 아래 코드 실행 -->
+<script>
+    const socket = io('/admin');  // Flask 서버에서 제공하는 /admin namespace로 연결
+
+    socket.on('connect', () => {
+        console.log("✅ 소켓 연결 성공");
+    });
+
+    socket.on('new_log', function(data) {
+        const logList = document.getElementById("log-list");
+        const li = document.createElement("li");
+        const now = new Date().toLocaleString();
+
+        li.className = "list-group-item";
+        li.innerHTML = `<strong>[${data.log_type.toUpperCase()}]</strong> ${data.message}
+                        <small class="text-muted float-end">${now}</small>`;
+        logList.prepend(li);
+    });
+</script>
+</body>
+</html>

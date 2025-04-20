@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>구름 마켓 - 홈</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <a class="navbar-brand" href="/">구름마켓</a>
+        <div class="ms-auto">
+            {% if session.user_id %}
+                <span class="text-white me-2">👋 {{ session.nickname }}님</span>
+                <a href="/mypage" class="btn btn-outline-light btn-sm">마이 페이지</a>  <!-- 마이 페이지 버튼 추가 -->
+                {% if session.user_id and session.is_admin %}
+                    <a href="/admin" class="btn btn-danger btn-sm">🔐 관리자 페이지</a>
+                {% endif %}
+                <a class="btn btn-outline-light btn-sm" href="/logout">로그아웃</a>
+            {% else %}
+                <a class="btn btn-outline-light btn-sm me-2" href="/login">로그인</a>
+                <a class="btn btn-outline-light btn-sm" href="/register">회원가입</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <form method="GET" action="/search" class="mb-4">
+            <div class="input-group">
+                <input type="search" class="form-control" placeholder="검색어를 입력하세요" name="search" aria-label="Search">
+                <button class="btn btn-primary" type="submit">검색</button>
+            </div>
+        </form>
+    </div>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>📦 등록된 상품</h2>
+            <div class="d-flex gap-2">
+                {% if session.user_id %}
+                    <a href="/chatbox" class="btn btn-outline-secondary me-2">💬 메시지함</a>
+                    {% if session.user_id and not session.is_blocked %}
+                        <a href="/items/new" class="btn btn-primary ">+ 상품 등록</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                {% for item in items %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if item.image_path %}
+                                <img src="{{ item.image_path }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='img/img.png') }}" class="card-img-top" alt="기본 이미지" style="height: 200px; object-fit: cover;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.title }}</h5>
+                                <p class="card-text text-truncate">{{ item.description }}</p>
+                                <p class="fw-bold">{{ item.price }}원</p>
+                                <div class="d-flex gap-2 mt-3">
+                                    <a href="/items/{{ item.id }}" class="btn btn-sm btn-outline-primary w-50">상세보기</a>
+                                    {% if session.user_id == item.owner_id %}
+                                    <form method="POST" action="/items/delete/{{ item.id }}" onsubmit="return confirm('정말 삭제할까요?');" class="w-50">
+                                        <button class="btn btn-sm btn-danger w-100">삭제</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">아직 등록된 상품이 없습니다.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        const socket = io('/');  // 기본 네임스페이스로 연결
+    
+        socket.on('new_transaction', function(data) {
+            console.log("새로운 송금 내역:", data);
+            
+        socket.on('connect', () => {
+            console.log("📦 게시물 작업 로그 소켓 연결됨");
+        });
+    
+        // 새로운 게시물이 실시간으로 추가될 때 처리하는 코드
+        socket.on('new_item', function(data) {
+            const container = document.querySelector(".row");  // 게시물 목록을 담고 있는 <div> 요소
+            const col = document.createElement("div");
+            col.className = "col";  // 새 게시물의 <div>에 클래스 추가
+            col.innerHTML = `
+                <div class="card h-100" id="item-${data.item_id}">
+                    <div class="card-body">
+                        <img src="{{ url_for('static', filename='img/img.png') }}" class="card-img-top" alt="기본 이미지" style="height: 200px; object-fit: cover;">
+                        <h5 class="card-title">${data.title}</h5>
+                        <p class="card-text text-truncate">${data.description}</p>
+                        <p class="fw-bold">${data.price}원</p>
+                        <a href="/items/${data.item_id}" class="btn btn-sm btn-outline-primary">상세보기</a>
+                        <form method="POST" action="/items/delete/${data.item_id}" onsubmit="return confirm('정말 삭제할까요?');">
+                            <button class="btn btn-sm btn-danger">삭제</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            container.appendChild(col);  // 새 게시물을 목록의 맨 앞에 추가
+        });
+    
+        // 게시물이 삭제될 때 처리하는 코드
+        socket.on('delete_item', function(data) {
+            const itemList = document.querySelector(".row");  // 게시물 목록을 담고 있는 <div> 요소
+            const itemToDelete = document.getElementById("item-" + data.item_id);  // 삭제할 게시물을 찾기
+    
+            if (itemToDelete) {
+                itemToDelete.remove();  // 해당 게시물을 DOM에서 제거
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>채팅 - {{ user.nickname }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<div class="container mt-5" style="max-width: 600px;">
+    <h4 class="mb-4">
+        💬 {{ user.nickname }}님과의 대화
+        {% if user.is_blocked %}
+            <span class="badge bg-danger ms-2">⛔ 차단된 사용자</span>
+        {% endif %}
+    </h4>
+
+    {% if item %}
+    <div class="alert alert-info mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            🛒 이 대화는 상품 "<strong>{{ item.title }}</strong>" 에서 시작됨
+        </div>
+        <a href="/items/{{ item.id }}" class="btn btn-sm btn-outline-primary">🔗 상세보기</a>
+    </div>
+    {% endif %}
+
+    <!-- ✅ 대화방 삭제 버튼 -->
+    <form method="POST" action="/chat/delete/{{ receiver_id }}?item_id={{ item_id }}" 
+          onsubmit="return confirm('이 대화방을 삭제할까요?')">
+        <button class="btn btn-sm btn-outline-danger mb-3">🗑 대화방 삭제</button>
+    </form>
+
+    <!-- ✅ 실시간 메시지 표시 영역 -->
+    <div class="chat-box border p-3 mb-4 bg-white" style="height: 400px; overflow-y: auto;">
+        {% for msg in messages %}
+            <div class="{% if msg.sender_id == session.user_id %}text-end{% else %}text-start{% endif %}">
+                <p class="mb-1">
+                    <strong>{{ msg.sender_name }}</strong>
+                    {% if msg.sender_id == session.user_id %}
+                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="deleteMessage({{ msg.id }})">🖑</button>
+                    {% endif %}
+                </p>
+                <div class="d-inline-block px-3 py-2 rounded mb-3 {% if msg.sender_id == session.user_id %}bg-primary text-white{% else %}bg-light{% endif %}" id="msg-{{ msg.id }}">
+                    {{ msg.content }}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- ✅ 메시지 전송 폼 -->
+    <form id="chat-form" method="POST">
+        <div class="input-group">
+            <input name="content" class="form-control" placeholder="메시지 입력..." required>
+            <button class="btn btn-primary" type="submit">보내기</button>
+        </div>
+    </form>
+
+    <div class="mt-3 d-flex justify-content-between">
+        <a href="/" class="btn btn-outline-secondary btn-sm">← 돌아가기</a>
+        <!-- 상품 구매 버튼을 "돌아가기" 오른쪽에 배치 -->
+        {% if item and session.user_id == item.owner_id %}
+            <button id="send-purchase-button" class="btn btn-success">상품 구매 버튼 보내기</button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ✅ Socket.IO 실시간 처리 -->
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    socket.emit('join', { user_id: {{ session.user_id }} });
+
+    const form = document.querySelector("#chat-form");
+    const input = document.querySelector("input[name='content']");
+    const chatBox = document.querySelector(".chat-box");
+
+    socket.on('connect', function() {
+        socket.emit('join', { user_id: {{ session.user_id }} });
+        console.log("🟢 join 요청 완료");
+    });
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+        const msg = input.value;
+        if (msg.trim()) {
+            console.log("보냄:", msg);
+            socket.emit("send_message", {
+                sender_id: {{ session.user_id }},
+                receiver_id: {{ receiver_id }},
+                item_id: {{ item_id }},
+                content: msg
+            });
+            input.value = '';
+        }
+    });
+
+    // 서버로부터 상품 구매하기 버튼을 받으면 처리
+    socket.on('purchase_button', function(data) {
+        console.log("🔔 구매 버튼 수신됨:", data); // ← 요게 안 찍히면 join 안 된 상태임
+        const itemId = data.item_id;
+        const buttonHTML = `
+            <div class="text-start">
+                <p class="mb-1"><strong>판매자</strong></p>
+                <div class="d-inline-block px-3 py-2 rounded mb-3 bg-light">
+                    <a class="btn btn-sm btn-outline-primary" href="/buy/${itemId}">상품 구매하기</a>
+                </div>
+            </div>
+        `;
+        const chatBox = document.querySelector(".chat-box");
+        chatBox.innerHTML += buttonHTML;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    socket.on("receive_message", function(data) {
+        console.log("수신:", data);
+        const currentReceiver = {{ receiver_id }};
+        const currentItem = {{ item_id }};
+        const myId = {{ session.user_id }};
+
+        if (
+            data.item_id === currentItem &&
+            ((data.sender_id === currentReceiver && data.receiver_id === myId) ||
+             (data.sender_id === myId && data.receiver_id === currentReceiver))
+        ) {
+            const div = document.createElement("div");
+            div.className = (data.sender_id === myId) ? "text-end" : "text-start";
+            div.innerHTML = `
+                <p class="mb-1"><strong>${data.sender_name}</strong></p>
+                <div class="d-inline-block px-3 py-2 rounded mb-3 ${data.sender_id === myId ? 'bg-primary text-white' : 'bg-light'}" id="msg-${data.id}">
+                    ${data.content}
+                </div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    });
+
+    function deleteMessage(msgId) {
+        if (confirm("이 메시지를 삭제할까요?")) {
+            socket.emit('delete_message', { id: msgId });
+        }
+    }
+
+    socket.on("message_deleted", function(data) {
+        const target = document.getElementById("msg-" + data.id);
+        if (target) {
+            target.innerHTML = "<em class='text-muted'>삭제된 메시지</em>";
+        }
+    });
+
+    // 판매자가 상품 구매 버튼을 보낼 때
+    document.getElementById('send-purchase-button').onclick = function() {
+        const itemId = {{ item.id }};  // 현재 상품 ID 사용
+        console.log("상품 구매 버튼 전송:", itemId);
+
+        // 판매자가 버튼을 보내면, 서버로 이벤트 전송
+        socket.emit('send_purchase_button', {
+            sender_id: {{ session.user_id }},
+            receiver_id: {{ receiver_id }},
+            item_id: itemId
+        });
+
+        // 버튼을 클릭한 후 숨기기
+        this.style.display = 'none'; 
+    };
+
+</script>
+</body>
+</html>

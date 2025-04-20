@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>📦 게시물 작업 로그</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <h3 class="navbar-brand mb-2">🧾 로그 대시보드</h3>
+        <div class="ms-auto">
+            <a href="/admin" class="btn btn-secondary btn-sm">← 관리자 홈으로</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h3 class="mb-4">📦 실시간 게시물 작업 로그</h3>
+        {% if session.is_superadmin %}
+        <form method="POST" action="/admin/logs/items/delete_all" onsubmit="return confirm('정말 전체 삭제할까요?');" class="mb-3">
+            <button class="btn btn-danger btn-sm">🧹 전체 게시물 로그 삭제</button>
+        </form>
+        {% endif %}
+
+        <div class="list-group mb-4">
+            <a href="/admin/logs" class="list-group-item list-group-item-action"> 👑 실시간 관리자 로그</a>
+            <a href="/admin/logs/chat" class="list-group-item list-group-item-action">📩 실시간 채팅 로그</a>
+            <a href="/admin/logs/reports" class="list-group-item list-group-item-action">🚨 실시간 신고 로그</a>
+        </div>
+
+        <!-- ID를 설정하여 정확한 ul 요소에 로그를 추가 -->
+        <ul class="list-group" id="item-log-list">
+            {% for log in logs %}
+            <li class="list-group-item">
+                <div>
+                    <strong>{{ log.nickname }}</strong> - {{ log.description }}
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">{{ log.timestamp }}</small>
+                    <form method="POST" action="{{ url_for('delete_items_log', log_id=log.id) }}" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                        <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="container mt-5"></div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io('/admin');  // admin namespace에 연결
+
+        socket.on('connect', () => {
+            console.log("📦 item 로그 소켓 연결됨");
+        });
+
+        // 서버에서 새 로그가 들어올 때마다 처리
+        socket.on('new_log', function(data) {
+            if (data.log_type === 'item') {
+                const logList = document.getElementById("item-log-list");  // 정확한 리스트 요소 가져오기
+                const li = document.createElement("li");
+                const now = new Date().toLocaleString();
+
+                li.className = "list-group-item";
+                li.innerHTML = `<strong>[ITEM]</strong> ${data.message}
+                                <small class="text-muted float-end">${now}</small>`;
+                
+                // 기존 로그의 맨 마지막에 새로운 로그를 추가
+                logList.prepend(li);
+            }
+        });
+    </script>
+</body>
+</html>

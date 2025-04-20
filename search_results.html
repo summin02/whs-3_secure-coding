@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>검색 결과 - 구름 마켓</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <a class="navbar-brand" href="/">구름마켓</a>
+        <div class="ms-auto">
+            {% if session.user_id %}
+                <span class="text-white me-2">👋 {{ session.nickname }}님</span>
+                {% if session.user_id and session.is_admin %}
+                    <a href="/admin" class="btn btn-danger btn-sm">🔐 관리자 페이지</a>
+                {% endif %}
+                <a class="btn btn-outline-light btn-sm" href="/logout">로그아웃</a>
+            {% else %}
+                <a class="btn btn-outline-light btn-sm me-2" href="/login">로그인</a>
+                <a class="btn btn-outline-light btn-sm" href="/register">회원가입</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <form method="GET" action="/search" class="mb-4">
+            <div class="input-group">
+                <input type="search" class="form-control" placeholder="검색어를 입력하세요" name="search" aria-label="Search">
+                <button class="btn btn-primary" type="submit">검색</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="container mt-5">
+        <h2>{{ search_query }} 검색결과</h2>
+        <a href="/" class="btn btn-secondary btn-sm">← 메인으로</a>
+
+        {% if items %}
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                {% for item in items %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if item.image_path %}
+                                <img src="{{ item.image_path }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='img/img.png') }}" class="card-img-top" alt="기본 이미지" style="height: 200px; object-fit: cover;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.title }}</h5>
+                                <p class="card-text text-truncate">{{ item.description }}</p>
+                                <p class="fw-bold">{{ item.price }}원</p>
+                                <a href="/items/{{ item.id }}" class="btn btn-sm btn-outline-primary">상세보기</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">검색된 상품이 없습니다.</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>

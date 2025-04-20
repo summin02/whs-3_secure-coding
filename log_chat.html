@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그 대시보드</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- ✅ socket.io는 이 줄 필수! -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <h3 class="navbar-brand mb-2">🧾 로그 대시보드</h3>
+        <div class="ms-auto">
+            <a href="/admin" class="btn btn-secondary btn-sm">← 관리자 홈으로</a>
+        </dev>
+    </nav>
+
+<div class="container mt-5">
+    <h3 class="mb-4">📩 실시간 채팅 로그</h3>
+    {% if session.is_superadmin %}
+    <!-- ✅ 슈퍼관리자 전용 전체 삭제 버튼 -->
+    <form method="POST" action="/admin/logs/chat/delete_all" onsubmit="return confirm('정말 전체 삭제할까요?');" class="mb-3">
+        <button class="btn btn-danger btn-sm">🧹 전체 로그 삭제</button>
+    </form>
+    {% endif %}
+
+    <div class="list-group mb-4">
+        <a href="/admin/logs" class="list-group-item list-group-item-action"> 👑 실시간 관리자 로그</a>
+        <a href="/admin/logs/items" class="list-group-item list-group-item-action">📦 실시간 게시물 작업 로그</a>
+        <a href="/admin/logs/reports" class="list-group-item list-group-item-action">🚨 실시간 신고 로그</a>
+    </div>
+
+    <ul class="list-group" id="log-list">
+        {% for log in logs %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <strong>보낸사람 : </strong>{{ log.sender_name }}<br>
+                <strong>받은사람 : </strong>{{ log.receiver_name }}<br>
+                <strong>대화내용 : </strong>{{ log.content or "(내용 없음)" }}
+            </div>
+            <div class="text-end">
+                <small class="text-muted">{{ log.timestamp }}</small>
+                <form method="POST" action="{{ url_for('delete_chat_log', log_id=log.id) }}" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                    <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+<div class="container mt-5"></div>
+
+<!-- ✅ 반드시 위의 socket.io.js가 먼저 로드된 이후에 아래 코드 실행 -->
+<script>
+    const socket = io('/admin');
+
+    socket.on('connect', () => {
+        console.log("✅ log_chat 소켓 연결됨");
+    });
+
+    socket.on('new_log', function(data) {
+        const logList = document.getElementById("log-list");
+        const li = document.createElement("li");
+        const now = new Date().toLocaleString();
+
+        li.className = "list-group-item";
+        li.innerHTML = `<strong>[${data.log_type.toUpperCase()}]</strong> ${data.message}
+                        <small class="text-muted float-end">${now}</small>`;
+        logList.prepend(li);
+    });
+</script>
+</body>
+</html>

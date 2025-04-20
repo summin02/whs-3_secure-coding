@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>마이 페이지</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <a class="navbar-brand" href="/">구름마켓</a>
+        <div class="ms-auto">
+            {% if session.user_id %}
+                <span class="text-white me-2">👋 {{ session.nickname }}님</span>
+                <a href="/mypage" class="btn btn-outline-light btn-sm">마이 페이지</a>  <!-- 마이 페이지 버튼 추가 -->
+                {% if session.user_id and session.is_admin %}
+                    <a href="/admin" class="btn btn-danger btn-sm">🔐 관리자 페이지</a>
+                {% endif %}
+                <a href="/logout" class="btn btn-outline-light btn-sm">로그아웃</a>
+            {% else %}
+                <a href="/login" class="btn btn-outline-light btn-sm">로그인</a>
+                <a href="/register" class="btn btn-outline-light btn-sm">회원가입</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2 class="mb-4">📦 마이 페이지</h2>
+        
+        <h3>내 정보</h3>
+        <div class="mb-3">
+            <strong>이름:</strong> {{ user.nickname }}<br>
+            <strong>이메일:</strong> {{ user.email }}<br>
+            <strong>잔액:</strong> {{ user.balance }}원  <!-- 잔액 표시 -->
+        </div>
+
+        <h3>내가 등록한 상품</h3>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for item in items %}
+                <div class="col">
+                    <div class="card h-100">
+                        <img src="{{ item.image_path or url_for('static', filename='img/img.png') }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ item.title }}</h5>
+                            <p class="card-text text-truncate">{{ item.description }}</p>
+                            <p class="fw-bold">{{ item.price }}원</p>
+                            <a href="/items/{{ item.id }}" class="btn btn-sm btn-outline-primary">상세보기</a>
+                            <form method="POST" action="/items/delete/{{ item.id }}" class="mt-2">
+                                <button class="btn btn-sm btn-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+    </div>
+
+</body>
+</html>

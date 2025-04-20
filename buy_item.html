@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ item.title }} 구매</title>
+</head>
+<body>
+    <h1>{{ item.title }}</h1>
+    <p>{{ item.description }}</p>
+    <p>가격: {{ item.price }}원</p>
+
+    {% if error %}
+    <p style="color:red">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <button type="submit">상품 구매하기</button>
+    </form>
+
+    <a href="/mypage">내 페이지로 돌아가기</a>
+</body>
+</html>

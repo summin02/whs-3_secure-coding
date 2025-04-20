@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ item.title }} - 상세보기</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="bg-light">
+
+    <div class="container mt-5" style="max-width: 800px;">
+        <h2 class="mb-4">{{ item.title }}</h2>
+
+        {% if item.image_paths %}
+        <div id="itemCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            {% for path in item.image_paths.split(',') %}
+            <div class="carousel-item {% if loop.first %}active{% endif %}">
+              <img src="{{ path.strip() }}" class="d-block w-100" style="max-height: 400px; object-fit: contain;">
+            </div>
+            {% endfor %}
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#itemCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+            <span class="visually-hidden">이전</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#itemCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+            <span class="visually-hidden">다음</span>
+          </button>
+        </div>
+        {% endif %}
+        <p>
+            <strong>판매자:</strong> {{ item.nickname }}
+            {% if item.is_blocked %}
+              <span class="badge bg-danger ms-2">⛔️ 차단된 사용자</span>
+            {% endif %}
+        </p>
+
+        <p><strong>가격:</strong> {{ item.price }}원</p>
+        <p><strong>설명:</strong></p>
+        <p>{{ item.description }}</p>
+
+
+        <div class="d-grid gap-2 mt-4">
+            <!-- 신고 버튼 -->
+            <form method="POST" action="/report/{{ item.owner_id }}" class="mt-3">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <div class="mb-2">
+                <textarea name="reason" class="form-control" placeholder="신고 사유를 입력해주세요" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger btn-sm">🚨 신고하기</button>
+            </form>
+            <a href="/" class="btn btn-secondary">← 목록으로</a>
+            {% if session.user_id and session.user_id != item.owner_id %}
+            <a href="/chat/{{ item.owner_id }}?item_id={{ item.id }}" class="btn btn-outline-primary">판매자에게 메시지 보내기</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
