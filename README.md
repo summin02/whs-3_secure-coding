@@ -11,3 +11,12 @@ mysql을 활용하여 데이터 베이스를 구축하였습니다.
 mysql을 통해 데이터베이스를 구축하고, ngrok를 활용하여 로컬 서버를 열어둔 다음 python3 app.py 명령어로 서버 파일을 구동 시 실행됩니다.
 
 ################################################################################################
+
+터미널 환경에서의 Mysql 환경을 구성합니다.
+
+1. brew install mysql 명령어를 통해 mysql을 섪치한다
+2. brew services start mysql 명령어를 통해 mysql 서비스를 실행한다.
+3. mysql -u root 명령어를 통해 root 권한으로 로그인 한다.
+
+mysql 데이터 베이스 구성 명령어는 아래 페이지 내용을 실행시키면 됩니다.
+https://github.com/summin02/whs-3_secure-coding/blob/71cc579d541b716948ad719f3acb1e2d643282ea/sql_database
