@@ -1,0 +1,114 @@
+CREATE DATABASE IF NOT EXISTS used_market;
+USE used_market;
+
+-- 1. 사용자 테이블
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
+    balance FLOAT DEFAULT 0,
+    is_blocked BOOLEAN DEFAULT FALSE,
+    block_reason TEXT,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_superadmin BOOLEAN DEFAULT FALSE
+);
+
+-- 2. 상품 테이블
+CREATE TABLE items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    price FLOAT NOT NULL,
+    owner_id INT NOT NULL,
+    image_path TEXT,
+    is_blocked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id)
+);
+
+-- 3. 메시지 테이블
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    content TEXT NOT NULL,
+    item_id INT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_by_sender BOOLEAN DEFAULT FALSE,
+    deleted_by_receiver BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
+-- 4. 거래(송금) 테이블
+CREATE TABLE transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    amount FLOAT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id)
+);
+
+-- 5. 관리자 일반 로그
+CREATE TABLE logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    log_type VARCHAR(50),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. 채팅 로그
+CREATE TABLE chat_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT,
+    receiver_id INT,
+    item_id INT,
+    content TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
+-- 7. 게시물 로그
+CREATE TABLE item_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    item_id INT,
+    action_type VARCHAR(50),
+    description TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
+-- 8. 신고 로그
+CREATE TABLE report_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reporter_id INT,
+    reported_user_id INT,
+    reason TEXT,
+    reported_item_title VARCHAR(255),
+    item_id INT,
+    report_type VARCHAR(50),
+    reported_item_user_id INT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reporter_id) REFERENCES users(id),
+    FOREIGN KEY (reported_user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (reported_item_user_id) REFERENCES users(id)
+);
+
+-- 9. 구매 기록 테이블
+CREATE TABLE purchases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_id INT NOT NULL,
+    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
