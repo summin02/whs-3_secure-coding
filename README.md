@@ -35,7 +35,7 @@ https://github.com/summin02/whs-3_secure-coding/blob/71cc579d541b716948ad719f3ac
 터미널 환경에서 Ngrok 환경을 구성합니다.
 
 https://ngrok.com/downloads/linux?tab=snap
-위 링크의 가이드 대로 설치 후 회원가입을 해 토큰을 발급받아 터미넣에 입력합니다.
+위 링크의 가이드 대로 설치 후 회원가입을 해 토큰을 발급받아 터미널에 입력합니다.
 
 brew install ngrok
 ngrok config add-authtoken <token>
