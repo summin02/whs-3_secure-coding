@@ -711,7 +711,7 @@ def edit_item(item_id):
         # 수정 로그 기록
         log_item_action(session['user_id'], item_id, 'update', f'"{title}" 상품을 수정했습니다.')
 
-        return redirect('/mypage')
+        return redirect('/')
 
     return render_template('edit_item.html', item=item)
 

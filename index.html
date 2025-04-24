@@ -63,6 +63,7 @@
                                 <div class="d-flex gap-2 mt-3">
                                     <a href="/items/{{ item.id }}" class="btn btn-sm btn-outline-primary w-50">상세보기</a>
                                     {% if session.user_id == item.owner_id %}
+                                    <a href="/items/edit/{{ item.id }}" class="btn btn-sm btn-outline-primary w-50">수정하기</a>
                                     <form method="POST" action="/items/delete/{{ item.id }}" onsubmit="return confirm('정말 삭제할까요?');" class="w-50">
                                         <button class="btn btn-sm btn-danger w-100">삭제</button>
                                     </form>
