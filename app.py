@@ -12,6 +12,9 @@ from flask_socketio import join_room
 
 
 app = Flask(__name__)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.secret_key = 'your_secret_key'
 bcrypt = Bcrypt(app)
 socketio = SocketIO(app, manage_session=False)
@@ -193,7 +196,7 @@ def admin_delete_item(item_id):
 
 @app.route('/admin/logs/dashboard')  # ✅ URL 변경
 def logs_dashboard():
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return "접근 권한 없음", 403
 
     cursor.execute("SELECT * FROM chat_logs ORDER BY timestamp DESC LIMIT 100")
@@ -212,7 +215,7 @@ def logs_dashboard():
     
 @app.route('/admin/logs')
 def admin_logs():
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return redirect('/')
 
     cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT 100")
@@ -235,7 +238,7 @@ def admin_logs():
 
 @app.route('/admin/logs/chat')
 def chat_logs():
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return redirect('/')
     cursor.execute("""
         SELECT c.*, u1.nickname AS sender_name, u2.nickname AS receiver_name
@@ -249,7 +252,7 @@ def chat_logs():
 
 @app.route('/admin/logs/items')
 def item_logs():
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return redirect('/')
 
     cursor.execute("""
@@ -263,7 +266,7 @@ def item_logs():
 
 @app.route('/admin/logs/reports')
 def report_logs():
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return redirect('/')
     cursor.execute("""
         SELECT r.*, u1.nickname AS reporter_name, u2.nickname AS reported_name
@@ -278,7 +281,7 @@ def report_logs():
 @app.route('/admin/logs/chat/<int:log_id>', methods=['POST'])
 def delete_chat_log(log_id):
     # 관리자만 접근 가능
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return "⛔️ 관리자만 접근 가능", 403
 
     # chat_logs에서 log_id에 해당하는 로그 가져오기
@@ -302,7 +305,7 @@ def delete_chat_log(log_id):
 @app.route('/admin/logs/items/<int:log_id>', methods=['POST'])
 def delete_items_log(log_id):
     # 관리자만 접근 가능
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return "⛔️ 관리자만 접근 가능", 403
 
     # chat_logs에서 log_id에 해당하는 로그 가져오기
@@ -326,7 +329,7 @@ def delete_items_log(log_id):
 @app.route('/admin/logs/reports/<int:log_id>', methods=['POST'])
 def delete_reports_log(log_id):
     # 관리자만 접근 가능
-    if not session.get('is_admin'):
+    if 'user_id' not in session or not session.get('is_admin'):
         return "⛔️ 관리자만 접근 가능", 403
 
     # chat_logs에서 log_id에 해당하는 로그 가져오기
@@ -449,8 +452,8 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
-        pw = request.form['password']
+        email = request.form['email'][:100].strip()
+        pw = request.form['password'][:100].strip()
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
@@ -497,9 +500,9 @@ def continue_login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form['email']
-        nickname = request.form['nickname']
-        password = request.form['password']
+        email = request.form['email'][:100].strip()
+        nickname = request.form['nickname'][:100].strip()
+        password = request.form['password'][:100].strip()
 
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         if cursor.fetchone():
@@ -523,9 +526,14 @@ def send_money():
 
     if request.method == 'POST':
         sender_id = session['user_id']
-        receiver_email = request.form['receiver_email']
-        amount = float(request.form['amount'])
-
+        receiver_email = request.form.get('receiver_email', '').strip()
+        try:
+            amount = float(request.form.get('amount', 0))
+            if amount <= 0:
+                raise ValueError("Invalid amount")
+        except ValueError:
+            return render_template('send_money.html', error="올바른 금액을 입력해주세요.")
+            
         # 송금자가 충분한 잔액을 가지고 있는지 확인
         cursor.execute("SELECT balance FROM users WHERE id = %s", (sender_id,))
         sender = cursor.fetchone()
@@ -605,9 +613,9 @@ def new_item():
         return "⛔️ 차단된 계정은 상품을 등록할 수 없습니다.", 403
 
     if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        price = request.form['price']
+        title = request.form['title'][:100].strip()
+        description = request.form['description'][:100].strip()
+        price = request.form['price'][:100].strip()
         owner_id = session['user_id']
 
         image_files = request.files.getlist('images')  # ✅ 여러 이미지
@@ -616,9 +624,10 @@ def new_item():
 
         for img in image_files:
             if img and allowed_file(img.filename):
-                filename = secure_filename(img.filename)
-                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                img.save(save_path)
+                filename = secure_filename(image_file.filename)
+                unique_filename = f"{datetime.now().timestamp()}_{filename}"
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                image_file.save(save_path)
                 full_path = '/' + save_path
                 image_paths.append(full_path)
                 if not image_path:
@@ -697,9 +706,9 @@ def edit_item(item_id):
         return "수정 권한이 없습니다.", 403
 
     if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        price = request.form['price']
+        title = request.form['title'][:100].strip()
+        description = request.form['description'][:100].strip()
+        price = request.form['price'][:100].strip()
 
         cursor.execute("""
             UPDATE items
@@ -750,7 +759,7 @@ def chat(receiver_id):
         item = cursor.fetchone()
 
     if request.method == 'POST':
-        content = request.form['content']
+        content = request.form['content'][:100].strip()
         cursor.execute("""
             INSERT INTO messages (sender_id, receiver_id, content, item_id)
             VALUES (%s, %s, %s, %s)
@@ -1020,4 +1029,4 @@ def on_join(data):
 #################### 실행 ####################
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=8080, use_reloader=False)
+    socketio.run(app, debug=False, port=8080, use_reloader=False)
